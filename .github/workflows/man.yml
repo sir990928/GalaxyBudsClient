@@ -24,7 +24,7 @@ jobs:
         with:
           global-json-file: global.json
 
-      # 缓存workload，避免重复下载安卓组件
+      # 缓存workload
       - name: Cache dotnet workload
         uses: actions/cache@v4
         with:
@@ -36,7 +36,7 @@ jobs:
       - name: Install Android Workload
         run: dotnet workload install android
 
-      # 缓存nuget依赖
+      # 缓存nuget
       - name: Cache NuGet packages
         uses: actions/cache@v4
         with:
@@ -46,20 +46,25 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Clean old build files（解决文件占用核心步骤）
+        run: |
+          dotnet clean GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj -c Release
+          rm -rf ./build_output
+
       - name: Restore dependencies
         run: |
           dotnet restore \
           --configfile GalaxyBudsClient/nuget.config \
           GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj
 
-      - name: Publish Android APK
+      - name: Publish Android APK (arm64-v8a 纯64位)
         run: |
           dotnet publish GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj \
           -c Release \
           -f net10.0-android36.1 \
           -p:AndroidPackageFormats=apk \
           -p:AndroidCreatePackage=true \
-          -p:AndroidSupportedABIs="arm64-v8a" \
+          -p:RuntimeIdentifier=android-arm64 \
           -p:TrimMode=none \
           -p:AndroidSdkDirectory=$ANDROID_SDK_ROOT \
           -o ./build_output \
