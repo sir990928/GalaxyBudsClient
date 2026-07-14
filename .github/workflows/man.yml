@@ -68,7 +68,9 @@ jobs:
           -p:AndroidPackageFormats=apk \
           -p:AndroidCreatePackage=true \
           -p:RuntimeIdentifier=android-arm64 \
+          -p:AndroidSupportedAbis= \
           -p:PublishTrimmed=false \
+          -p:RunAOTCompilation=false \
           -p:ILLinkTreatWarningsAsErrors=false \
           -p:DebugSymbols=false \
           -p:DebugType=None \
