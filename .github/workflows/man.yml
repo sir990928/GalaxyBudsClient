@@ -49,10 +49,12 @@ jobs:
       - name: Install llvm-strip（用于清理so符号）
         run: sudo apt update && sudo apt install -y llvm
 
-      - name: Clean旧构建文件，规避文件锁冲突
+      - name: 彻底清理全部编译缓存，避免文件占用冲突
         run: |
           dotnet clean GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj -c Release
           rm -rf ./build_output
+          find . -type d -name "bin" -exec rm -rf {} +
+          find . -type d -name "obj" -exec rm -rf {} +
 
       - name: Restore dependencies
         run: |
@@ -65,6 +67,7 @@ jobs:
           dotnet publish GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj \
           -c Release \
           -f net10.0-android36.1 \
+          -maxcpucount:1 \
           -p:AndroidPackageFormats=apk \
           -p:AndroidCreatePackage=true \
           -p:RuntimeIdentifier=android-arm64 \
@@ -85,7 +88,7 @@ jobs:
           APK=$(find ./build_output -name "*.apk" | head -1)
           # 解压apk
           unzip -q "$APK" -d work_apk
-          # 遍历所有arm64 so，剥离符号表
+          # 遍历arm64 so，剥离符号信息
           find work_apk/lib/arm64-v8a -name "*.so" -exec llvm-strip --strip-all {} \;
           # 重新打包apk
           cd work_apk
