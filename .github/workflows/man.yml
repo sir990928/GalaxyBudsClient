@@ -24,7 +24,7 @@ jobs:
         with:
           global-json-file: global.json
 
-      # 缓存workload
+      # 缓存workload加速
       - name: Cache dotnet workload
         uses: actions/cache@v4
         with:
@@ -36,7 +36,7 @@ jobs:
       - name: Install Android Workload
         run: dotnet workload install android
 
-      # 缓存nuget
+      # 缓存NuGet包
       - name: Cache NuGet packages
         uses: actions/cache@v4
         with:
@@ -46,7 +46,10 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Clean old build files（解决文件占用核心步骤）
+      - name: Install llvm-strip（用于清理so符号）
+        run: sudo apt update && sudo apt install -y llvm
+
+      - name: Clean旧构建文件，规避文件锁冲突
         run: |
           dotnet clean GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj -c Release
           rm -rf ./build_output
@@ -57,7 +60,7 @@ jobs:
           --configfile GalaxyBudsClient/nuget.config \
           GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj
 
-      - name: Publish Android APK (arm64-v8a 纯64位)
+      - name: Publish Android APK arm64-only，关闭全部调试信息
         run: |
           dotnet publish GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj \
           -c Release \
@@ -65,11 +68,30 @@ jobs:
           -p:AndroidPackageFormats=apk \
           -p:AndroidCreatePackage=true \
           -p:RuntimeIdentifier=android-arm64 \
-          -p:TrimMode=none \
+          -p:PublishTrimmed=false \
+          -p:ILLinkTreatWarningsAsErrors=false \
+          -p:DebugSymbols=false \
+          -p:DebugType=None \
+          -p:AndroidEnableProfiledAot=false \
           -p:AndroidSdkDirectory=$ANDROID_SDK_ROOT \
           -o ./build_output \
           --no-restore
-          find ./build_output -name "*.apk"
+
+      - name: Extract APK，清理so调试符号（核心瘦身步骤）
+        run: |
+          mkdir -p work_apk
+          APK=$(find ./build_output -name "*.apk" | head -1)
+          # 解压apk
+          unzip -q "$APK" -d work_apk
+          # 遍历所有arm64 so，剥离符号表
+          find work_apk/lib/arm64-v8a -name "*.so" -exec llvm-strip --strip-all {} \;
+          # 重新打包apk
+          cd work_apk
+          zip -q -r ../slim.apk .
+          cd ..
+          # 覆盖原文件
+          mv slim.apk "$APK"
+          rm -rf work_apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v6
@@ -88,7 +110,7 @@ jobs:
           name: GalaxyBudsClient_Android_APK
 
       - name: Rename APK
-        run: mv ./*.apk GalaxyBudsClient_Android_arm64.apk
+        run: mv ./*.apk GalaxyBudsClient_Android_arm64_slim.apk
 
       - uses: AButler/upload-release-assets@v3.0.1
         with:
