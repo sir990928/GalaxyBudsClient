@@ -44,7 +44,7 @@ jobs:
           -f net10.0-android36.1 \
           -p:AndroidPackageFormats=apk \
           -p:AndroidCreatePackage=true \
-          -p:AndroidSupportedABIs=armeabi-v7a;arm64-v8a \
+          -p:AndroidSupportedABIs="armeabi-v7a;arm64-v8a" \
           -p:TrimMode=none \
           -p:AndroidSdkDirectory=$ANDROID_SDK_ROOT \
           -o ./build_output \
