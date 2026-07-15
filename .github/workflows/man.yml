@@ -44,7 +44,7 @@ jobs:
         --configfile GalaxyBudsClient/nuget.config \
         GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj
         
-    - name: Publish Android APK（SO深度瘦身参数全部开启）
+    - name: Publish Android APK（SO深度瘦身，移除冲突参数）
       env:
         KEY_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
         KEY_STORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -60,7 +60,6 @@ jobs:
         -p:StripNativeSymbols=true \
         -p:AndroidEnableProfiledAot=true \
         -p:AndroidEnableDynamicLoading=false \
-        -p:UseAppHost=true \
         -p:DebugSymbols=false \
         -p:DebugType=None \
         -p:AndroidSdkDirectory=$ANDROID_HOME \
