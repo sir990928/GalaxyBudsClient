@@ -6,9 +6,9 @@ on:
   pull_request:
     branches: [ master ]
   release:
-    types:
-      - published
-      - prereleased
+     types: 
+       - published
+       - prereleased
   workflow_dispatch:
 
 jobs:
@@ -16,101 +16,69 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      MSBUILDSINGLEPROCESS: true
     steps:
-      - uses: actions/checkout@v6
+    - uses: actions/checkout@v6
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          global-json-file: global.json
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v5
+      with:
+        global-json-file: global.json
+       
+    - name: Install Android Workload
+      run: dotnet workload install android
 
-      - name: Cache dotnet workload
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.dotnet/packs
-            ~/.dotnet/workloadPacks
-          key: dotnet-android-workload-${{ runner.os }}
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
 
-      - name: Install Android Workload
-        run: dotnet workload install android
+    # 密钥恢复（如果你启用签名，保留；不需要签名可整块删除）
+    - name: Restore Keystore
+      env:
+        KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      run: |
+        echo "$KEYSTORE_B64" | base64 -d > app.keystore
 
-      - name: Cache NuGet packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/NuGet/Cache
-          key: nuget-${{ hashFiles('**/nuget.config','**/*.csproj') }}
+    - name: Restore dependencies
+      run: |
+        dotnet restore \
+        --configfile GalaxyBudsClient/nuget.config \
+        GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj
+        
+    - name: Publish Android APK
+      env:
+        KEY_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+        KEY_STORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      run: |
+        dotnet publish GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj \
+        -c Release \
+        -f net10.0-android36.1 \
+        -p:AndroidPackageFormats=apk \
+        -p:AndroidCreatePackage=true \
+        -p:AndroidSdkDirectory=$ANDROID_HOME \
+        -p:AndroidSigningKeyStore=app.keystore \
+        -p:AndroidSigningKeyAlias=$KEY_ALIAS \
+        -p:AndroidSigningKeyPass=$KEY_PASS \
+        -p:AndroidSigningStorePass=$KEY_STORE_PASS \
+        -o ./build_output \
+        --no-restore \
+        -maxcpucount:1
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+    - name: Rename APK
+      run: |
+        mv ./build_output/*.apk GalaxyBudsClient_Android_Universal_Signed.apk
 
-      - name: Install llvm-strip
-        run: sudo apt update && sudo apt install -y llvm
+    # 只在release触发时上传资产，无artifact中转！！
+    - name: Upload APK to Release
+      if: github.event_name == 'release'
+      uses: AButler/upload-release-assets@v3.0.1
+      with:
+        files: 'GalaxyBudsClient_Android_Universal_Signed.apk'
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 清理编译缓存
-        run: |
-          dotnet clean GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj -c Release
-          rm -rf ./build_output
-          mkdir -p ./build_output
-          find . -type d -name "bin" -exec rm -rf {} +
-          find . -type d -name "obj" -exec rm -rf {} +
-
-      - name: Restore dependencies
-        run: |
-          dotnet restore \
-          --configfile GalaxyBudsClient/nuget.config \
-          GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj
-
-      - name: Publish 原生仅arm64 未签名APK
-        run: |
-          dotnet publish GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj \
-          -c Release \
-          -f net10.0-android36.1 \
-          -r android-arm64 \
-          -maxcpucount:1 \
-          -p:AndroidPackageFormats=apk \
-          -p:AndroidCreatePackage=true \
-          -p:PublishTrimmed=false \
-          -p:RunAOTCompilation=false \
-          -p:DebugSymbols=false \
-          -p:DebugType=None \
-          -p:AndroidEnableProfiledAot=false \
-          -p:AndroidSignPackage=false \
-          -o ./build_output \
-          --no-restore
-
-      - name: SO瘦身（仅剥离符号，不删架构）
-        run: |
-          mkdir -p work_apk
-          RAW_APK=$(find ./build_output -maxdepth 1 -type f -name "*.apk" | head -1)
-          unzip -q "$RAW_APK" -d work_apk
-          find work_apk/lib/arm64-v8a -name "*.so" -exec llvm-strip --strip-all {} \;
-          cd work_apk
-          zip -q -r ../build_output/GalaxyBudsClient-arm64-unsigned.apk .
-          cd ..
-          rm -rf work_apk
-          rm "$RAW_APK"
-
-      - name: Upload 纯净单64位未签名包
-        uses: actions/upload-artifact@v6
-        with:
-          name: GalaxyBudsClient_arm64_unsigned
-          path: ./build_output/GalaxyBudsClient-arm64-unsigned.apk
-
-  attach-to-release:
-    runs-on: ubuntu-latest
-    needs: [build-android]
-    if: github.event_name == 'release'
-    steps:
-      - name: Download APK
-        uses: actions/download-artifact@v7
-        with:
-          name: GalaxyBudsClient_arm64_unsigned
-
-      - name: Rename APK
-        run: mv *.apk GalaxyBudsClient_arm64_unsigned_slim.apk
-
-      - uses: AButler/upload-release-assets@v3.0.1
-        with:
-          files: '*.apk'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+    # 可选：保留artifact用于调试（注意：下载依旧是zip，仅作测试使用，不用于发布）
+    - name: Debug Artifact(可选)
+      uses: actions/upload-artifact@v6
+      with:
+        name: APK_Debug
+        path: GalaxyBudsClient_Android_Universal_Signed.apk
