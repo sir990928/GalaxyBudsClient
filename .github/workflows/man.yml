@@ -44,7 +44,7 @@ jobs:
         --configfile GalaxyBudsClient/nuget.config \
         GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj
         
-    - name: Publish Android APK
+    - name: Publish Android APK（SO深度瘦身参数全部开启）
       env:
         KEY_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
         KEY_STORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -58,6 +58,11 @@ jobs:
         -p:AndroidBundle=false \
         -p:AndroidSupportedAbis=arm64-v8a \
         -p:StripNativeSymbols=true \
+        -p:AndroidEnableProfiledAot=true \
+        -p:AndroidEnableDynamicLoading=false \
+        -p:UseAppHost=true \
+        -p:DebugSymbols=false \
+        -p:DebugType=None \
         -p:AndroidSdkDirectory=$ANDROID_HOME \
         -p:AndroidSigningKeyStore=app.keystore \
         -p:AndroidSigningKeyAlias=$KEY_ALIAS \
@@ -82,11 +87,6 @@ jobs:
         fi
         mv "$APK_PATH" GalaxyBudsClient_Android_Universal_Signed.apk
 
-    - name: Zipalign 4字节对齐优化
-      run: |
-        $ANDROID_HOME/build-tools/*/zipalign -f 4 GalaxyBudsClient_Android_Universal_Signed.apk aligned.apk
-        mv aligned.apk GalaxyBudsClient_Android_Universal_Signed.apk
-
     - name: Upload APK to Release
       if: github.event_name == 'release'
       uses: AButler/upload-release-assets@v3.0.1
@@ -94,7 +94,7 @@ jobs:
         files: 'GalaxyBudsClient_Android_Universal_Signed.apk'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-    # 可选调试制品，下载会是zip，仅测试使用，不会上传Release
+    # 可选调试制品，仅测试使用
     - name: Debug Artifact
       uses: actions/upload-artifact@v6
       with:
