@@ -31,7 +31,7 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    # 密钥恢复（如果你启用签名，保留；不需要签名可整块删除）
+    # 密钥恢复，不需要签名直接删除本段
     - name: Restore Keystore
       env:
         KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -55,6 +55,7 @@ jobs:
         -f net10.0-android36.1 \
         -p:AndroidPackageFormats=apk \
         -p:AndroidCreatePackage=true \
+        -p:AndroidBundle=false \
         -p:AndroidSdkDirectory=$ANDROID_HOME \
         -p:AndroidSigningKeyStore=app.keystore \
         -p:AndroidSigningKeyAlias=$KEY_ALIAS \
@@ -64,11 +65,18 @@ jobs:
         --no-restore \
         -maxcpucount:1
 
+    - name: List all build files (Debug)
+      run: find ./build_output
+
     - name: Rename APK
       run: |
-        mv ./build_output/*.apk GalaxyBudsClient_Android_Universal_Signed.apk
+        APK_PATH=$(find ./build_output -maxdepth 3 -name "*.apk" | head -n 1)
+        if [ -z "$APK_PATH" ]; then
+          echo "::error::未找到APK文件！"
+          exit 1
+        fi
+        mv "$APK_PATH" GalaxyBudsClient_Android_Universal_Signed.apk
 
-    # 只在release触发时上传资产，无artifact中转！！
     - name: Upload APK to Release
       if: github.event_name == 'release'
       uses: AButler/upload-release-assets@v3.0.1
@@ -76,8 +84,8 @@ jobs:
         files: 'GalaxyBudsClient_Android_Universal_Signed.apk'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-    # 可选：保留artifact用于调试（注意：下载依旧是zip，仅作测试使用，不用于发布）
-    - name: Debug Artifact(可选)
+    # 可选调试制品，下载会是zip，仅测试使用，不会参与发布
+    - name: Debug Artifact
       uses: actions/upload-artifact@v6
       with:
         name: APK_Debug
