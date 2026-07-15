@@ -61,8 +61,6 @@ jobs:
         -p:AndroidEnableDynamicLoading=false \
         -p:DebugSymbols=false \
         -p:DebugType=None \
-        -p:PublishTrimmed=true \
-        -p:TrimMode=full \
         -p:AndroidSdkDirectory=$ANDROID_HOME \
         -p:AndroidSigningKeyStore=app.keystore \
         -p:AndroidSigningKeyAlias=$KEY_ALIAS \
