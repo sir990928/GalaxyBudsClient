@@ -1,14 +1,10 @@
-name: Compile Android APK
+name: Compile GalaxyBudsClient Android
 
 on:
   push:
     branches: [ master, NET10 ]
   pull_request:
     branches: [ master ]
-  release:
-    types:
-      - published
-      - prereleased
   workflow_dispatch:
 
 jobs:
@@ -44,23 +40,24 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install llvm-strip（用于清理so符号）
-        run: sudo apt update && sudo apt install -y llvm
+      - name: Install依赖工具 llvm、zip、unzip
+        run: sudo apt update && sudo apt install -y llvm zip unzip
 
-      - name: 彻底清理全部编译缓存，避免文件占用冲突
+      - name: 清理旧构建产物
         run: |
           dotnet clean GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj -c Release
           rm -rf ./build_output
+          mkdir -p ./build_output
           find . -type d -name "bin" -exec rm -rf {} +
           find . -type d -name "obj" -exec rm -rf {} +
 
-      - name: Restore dependencies
+      - name: Restore项目依赖
         run: |
           dotnet restore \
           --configfile GalaxyBudsClient/nuget.config \
           GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj
 
-      - name: Publish 仅arm64架构，输出未签名APK
+      - name: Publish（关闭自动签名）
         run: |
           dotnet publish GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj \
           -c Release \
@@ -74,54 +71,30 @@ jobs:
           -p:DebugSymbols=false \
           -p:DebugType=None \
           -p:AndroidEnableProfiledAot=false \
+          -p:AndroidSignPackage=false \
           -o ./build_output \
           --no-restore
 
-      - name: 删除多余ABI架构 + SO瘦身（签名前执行）
+      - name: 裁剪ABI + SO瘦身
         run: |
           mkdir -p work_apk
-          RAW_APK=$(find ./build_output -maxdepth 1 -type f -name "*.apk" ! -name "*-Signed.apk" | head -1)
+          RAW_APK=$(find ./build_output -maxdepth 1 -type f -name "*.apk" | head -1)
           unzip -q "$RAW_APK" -d work_apk
 
-          # 核心新增：强制删除非arm64全部架构目录
           rm -rf work_apk/lib/armeabi-v7a
           rm -rf work_apk/lib/x86
           rm -rf work_apk/lib/x86_64
 
-          # strip 仅保留的arm64库
           find work_apk/lib/arm64-v8a -name "*.so" -exec llvm-strip --strip-all {} \;
 
           cd work_apk
-          zip -q -r ../temp_build.apk .
+          zip -q -r ../GalaxyBudsClient-arm64-unsigned.apk .
           cd ..
-          mv temp_build.apk "$RAW_APK"
           rm -rf work_apk
+          rm "$RAW_APK"
 
-      - name: 删除未签名原始安装包
-        run: |
-          find ./build_output -maxdepth 1 -type f -name "*.apk" ! -name "*-Signed.apk" -delete
-
-      - name: Upload APK artifact（仅上传已签名包）
+      - name: 上传【未签名精简包】
         uses: actions/upload-artifact@v6
         with:
-          name: GalaxyBudsClient_Android_APK
-          path: ./build_output/*-Signed.apk
-
-  attach-to-release:
-    runs-on: ubuntu-latest
-    needs: [build-android]
-    if: github.event_name == 'release'
-    steps:
-      - name: Download Android APK artifact
-        uses: actions/download-artifact@v7
-        with:
-          name: GalaxyBudsClient_Android_APK
-
-      - name: Rename APK
-        run: |
-          mv ./*-Signed.apk GalaxyBudsClient_arm64_signed_slim.apk
-
-      - uses: AButler/upload-release-assets@v3.0.1
-        with:
-          files: '*.apk'
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          name: GalaxyBudsClient_unsigned_arm64
+          path: ./build_output/GalaxyBudsClient-arm64-unsigned.apk
