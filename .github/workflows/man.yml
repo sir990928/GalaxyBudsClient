@@ -24,7 +24,6 @@ jobs:
         with:
           global-json-file: global.json
 
-      # 缓存workload加速
       - name: Cache dotnet workload
         uses: actions/cache@v4
         with:
@@ -36,7 +35,6 @@ jobs:
       - name: Install Android Workload
         run: dotnet workload install android
 
-      # 缓存NuGet包
       - name: Cache NuGet packages
         uses: actions/cache@v4
         with:
@@ -62,38 +60,39 @@ jobs:
           --configfile GalaxyBudsClient/nuget.config \
           GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj
 
-      - name: Publish Android APK arm64-only，关闭全部调试信息
+      - name: Publish 仅arm64架构，输出未签名APK
         run: |
           dotnet publish GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj \
           -c Release \
           -f net10.0-android36.1 \
+          -r android-arm64 \
           -maxcpucount:1 \
           -p:AndroidPackageFormats=apk \
           -p:AndroidCreatePackage=true \
-          -p:RuntimeIdentifier=android-arm64 \
-          -p:AndroidSupportedAbis=arm64-v8a \
           -p:PublishTrimmed=false \
           -p:RunAOTCompilation=false \
-          -p:ILLinkTreatWarningsAsErrors=false \
           -p:DebugSymbols=false \
           -p:DebugType=None \
           -p:AndroidEnableProfiledAot=false \
-          -p:AndroidSdkDirectory=$ANDROID_SDK_ROOT \
           -o ./build_output \
           --no-restore
 
-      - name: Extract APK，清理so调试符号（核心瘦身步骤）
+      - name: 未签名APK执行SO瘦身（签名前操作，不会破坏签名）
         run: |
           mkdir -p work_apk
-          APK=$(find ./build_output -name "*-Signed.apk" | head -1)
-          unzip -q "$APK" -d work_apk
+          # 获取未签名原始apk
+          RAW_APK=$(find ./build_output -maxdepth 1 -type f -name "*.apk" ! -name "*-Signed.apk" | head -1)
+          unzip -q "$RAW_APK" -d work_apk
           find work_apk/lib/arm64-v8a -name "*.so" -exec llvm-strip --strip-all {} \;
           cd work_apk
-          zip -q -r ../slim.apk .
+          zip -q -r ../temp_build.apk .
           cd ..
-          mv slim.apk "$APK"
+          mv temp_build.apk "$RAW_APK"
           rm -rf work_apk
-          # 使用标准find语法，修复shell语法报错
+
+      # .NET Android 后续自动执行签名，生成 *-Signed.apk
+      - name: 删除未签名原始安装包
+        run: |
           find ./build_output -maxdepth 1 -type f -name "*.apk" ! -name "*-Signed.apk" -delete
 
       - name: Upload APK artifact（仅上传已签名包）
@@ -114,7 +113,7 @@ jobs:
 
       - name: Rename APK
         run: |
-          mv ./*-Signed.apk GalaxyBudsClient_Android_arm64_slim.apk
+          mv ./*-Signed.apk GalaxyBudsClient_arm64_signed_slim.apk
 
       - uses: AButler/upload-release-assets@v3.0.1
         with:
