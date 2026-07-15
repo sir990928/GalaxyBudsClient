@@ -31,7 +31,7 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    # 密钥恢复，不需要签名直接删除本段
+    # 密钥恢复，不需要签名功能直接删除整个区块
     - name: Restore Keystore
       env:
         KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -56,6 +56,8 @@ jobs:
         -p:AndroidPackageFormats=apk \
         -p:AndroidCreatePackage=true \
         -p:AndroidBundle=false \
+        -p:AndroidSupportedAbis=arm64-v8a \
+        -p:StripNativeSymbols=true \
         -p:AndroidSdkDirectory=$ANDROID_HOME \
         -p:AndroidSigningKeyStore=app.keystore \
         -p:AndroidSigningKeyAlias=$KEY_ALIAS \
@@ -68,14 +70,22 @@ jobs:
     - name: List all build files (Debug)
       run: find ./build_output
 
-    - name: Rename APK
+    - name: Rename APK（优先选取Signed签名包）
       run: |
-        APK_PATH=$(find ./build_output -maxdepth 3 -name "*.apk" | head -n 1)
+        APK_PATH=$(find ./build_output -maxdepth 3 -name "*-Signed.apk" | head -n 1)
+        if [ -z "$APK_PATH" ]; then
+          APK_PATH=$(find ./build_output -maxdepth 3 -name "*.apk" | head -n 1)
+        fi
         if [ -z "$APK_PATH" ]; then
           echo "::error::未找到APK文件！"
           exit 1
         fi
         mv "$APK_PATH" GalaxyBudsClient_Android_Universal_Signed.apk
+
+    - name: Zipalign 4字节对齐优化
+      run: |
+        $ANDROID_HOME/build-tools/*/zipalign -f 4 GalaxyBudsClient_Android_Universal_Signed.apk aligned.apk
+        mv aligned.apk GalaxyBudsClient_Android_Universal_Signed.apk
 
     - name: Upload APK to Release
       if: github.event_name == 'release'
@@ -84,7 +94,7 @@ jobs:
         files: 'GalaxyBudsClient_Android_Universal_Signed.apk'
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-    # 可选调试制品，下载会是zip，仅测试使用，不会参与发布
+    # 可选调试制品，下载会是zip，仅测试使用，不会上传Release
     - name: Debug Artifact
       uses: actions/upload-artifact@v6
       with:
