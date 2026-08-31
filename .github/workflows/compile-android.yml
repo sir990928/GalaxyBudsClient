@@ -1,0 +1,57 @@
+name: Compile Android APK/AAB
+
+on:
+  push:
+    branches: [ master, NET10 ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+    inputs:
+      full_version:
+        description: 'Build full version (NoDemo=true)'
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Restore dependencies
+        run: dotnet restore --configfile GalaxyBudsClient/nuget.config GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj
+
+      - name: Build Android APK/AAB
+        env:
+          NoDemo: ${{ github.event.inputs.full_version == 'true' }}
+        run: >-
+          dotnet publish GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj
+          -c Release
+          -f net10.0-android36.1
+          -p:NoDemo=${{ github.event.inputs.full_version == 'true' }}
+          -p:AndroidPackageFormats=apk
+          -o artifacts
+          --no-restore
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: GalaxyBudsClient-android
+          path: |
+            artifacts/**/*-Signed.apk
+            artifacts/**/*.apk
+          if-no-files-found: warn
