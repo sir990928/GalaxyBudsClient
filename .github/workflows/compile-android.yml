@@ -1,4 +1,4 @@
-name: 编译 Android APK/AAB
+name: 编译 Android 正式版 APK
 
 on:
   push:
@@ -6,12 +6,6 @@ on:
   pull_request:
     branches: [ master ]
   workflow_dispatch:
-    inputs:
-      full_version:
-        description: '编译正式版（NoDemo=true）'
-        type: boolean
-        required: false
-        default: false
 
 jobs:
   build-android:
@@ -38,14 +32,12 @@ jobs:
       - name: 还原依赖
         run: dotnet restore --configfile GalaxyBudsClient/nuget.config GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj
 
-      - name: 编译 Android APK/AAB
-        env:
-          NoDemo: ${{ github.event.inputs.full_version == 'true' }}
+      - name: 编译 Android 正式版 APK
         run: >-
           dotnet publish GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj
           -c Release
           -f net10.0-android36.1
-          -p:NoDemo=${{ github.event.inputs.full_version == 'true' }}
+          -p:NoDemo=true
           -p:AndroidPackageFormats=apk
           -p:BuildInParallel=false
           -m:1
