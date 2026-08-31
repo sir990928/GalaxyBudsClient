@@ -52,11 +52,10 @@ jobs:
           -o artifacts
           --no-restore
 
-      - name: 上传 APK 产物
+      - name: 上传签名 APK
         uses: actions/upload-artifact@v6
         with:
           name: GalaxyBudsClient-android
           path: |
             artifacts/**/*-Signed.apk
-            artifacts/**/*.apk
           if-no-files-found: warn
