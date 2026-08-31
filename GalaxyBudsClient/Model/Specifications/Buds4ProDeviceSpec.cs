@@ -43,7 +43,7 @@ public class Buds4ProDeviceSpec : IDeviceSpec
         { Features.Rename, null },
         { Features.SmartThingsFind, null },
         { Features.UsageReport, null },
-        { Features.HotCommandLanguageUpdate, null }
+        { Features.HotCommandLanguageUpdate, new FeatureRule(2) }
     };
         
     public Models Device => Models.Buds4Pro;

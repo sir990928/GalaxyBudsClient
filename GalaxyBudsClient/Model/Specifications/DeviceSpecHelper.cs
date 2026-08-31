@@ -48,7 +48,7 @@ public static class DeviceSpecHelper
                     {
                         var deviceIdBytes = Enumerable.Range(0, deviceIdHex.Length)
                             .Where(x => x % 2 == 0)
-                            .Select(x => Convert.ToByte(deviceIdHex.Substring(x, 2), 16))
+                            .Select(x => Convert.ToByte(deviceIdPrefix.Substring(x, 2), 16))
                             .ToArray();
 
                         // Check based on DeviceManager.getWearableDeviceFromBudsUUID() from the Wearable container app
