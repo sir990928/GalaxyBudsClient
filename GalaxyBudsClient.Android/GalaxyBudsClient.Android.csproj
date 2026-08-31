@@ -1,4 +1,3 @@
-cat > /storage/emulated/0/Download/Deekseep/GalaxyBudsClient/GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj <<'CSPROJ'
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="../GalaxyBudsClient/Application.props" />
   
@@ -56,4 +55,3 @@ cat > /storage/emulated/0/Download/Deekseep/GalaxyBudsClient/GalaxyBudsClient.An
     </ProjectReference>
   </ItemGroup>
 </Project>
-CSPROJ
