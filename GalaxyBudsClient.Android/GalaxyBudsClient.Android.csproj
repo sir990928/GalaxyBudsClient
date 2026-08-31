@@ -1,15 +1,16 @@
+cat > /storage/emulated/0/Download/Deekseep/GalaxyBudsClient/GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj <<'CSPROJ'
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="../GalaxyBudsClient/Application.props" />
   
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0-android</TargetFramework>
-    <TargetFrameworkVersion>v14.0</TargetFrameworkVersion>
+    <TargetFramework>net10.0-android36.1</TargetFramework>
+    <TargetFrameworkVersion>v15.0</TargetFrameworkVersion>
     <RuntimeIdentifiers>android-arm64</RuntimeIdentifiers>
     
     <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
-    <AndroidPackageFormats>apk;aab</AndroidPackageFormats>
+    <AndroidPackageFormats>apk</AndroidPackageFormats>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
     
     <DefineConstants>$(DefineConstants);Android</DefineConstants>
@@ -45,13 +46,14 @@
           
   <ItemGroup>
     <PackageReference Include="Avalonia.Android" Version="$(AvaloniaVersion)" />
-    <PackageReference Include="Microsoft.NET.Runtime.MonoAOTCompiler.Task" Version="8.0.7" />
-    <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.0.1.1" />
+    <PackageReference Include="Microsoft.NET.Runtime.MonoAOTCompiler.Task" Version="10.0.1" />
+    <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" Version="1.2.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../GalaxyBudsClient/GalaxyBudsClient.csproj">
-      <Properties>IsAndroid=true</Properties>
+      <AdditionalProperties>IsAndroid=true</AdditionalProperties>
     </ProjectReference>
   </ItemGroup>
 </Project>
+CSPROJ
