@@ -9,7 +9,7 @@
     
     <SupportedOSPlatformVersion>24</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
-    <AndroidPackageFormats>apk</AndroidPackageFormats>
+    <AndroidPackageFormats>apk;aab</AndroidPackageFormats>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
     
     <DefineConstants>$(DefineConstants);Android</DefineConstants>
