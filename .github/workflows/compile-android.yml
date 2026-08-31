@@ -1,4 +1,4 @@
-name: Compile Android APK/AAB
+name: 编译 Android APK/AAB
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       full_version:
-        description: 'Build full version (NoDemo=true)'
+        description: '编译正式版（NoDemo=true）'
         type: boolean
         required: false
         default: false
@@ -18,24 +18,27 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: 检出代码
         uses: actions/checkout@v6
 
-      - name: Setup .NET
+      - name: 安装 .NET SDK
         uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
 
-      - name: Setup JDK
+      - name: 安装 JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Restore dependencies
+      - name: 安装 Android 工作负载
+        run: dotnet workload restore GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj
+
+      - name: 还原依赖
         run: dotnet restore --configfile GalaxyBudsClient/nuget.config GalaxyBudsClient.Android/GalaxyBudsClient.Android.csproj
 
-      - name: Build Android APK/AAB
+      - name: 编译 Android APK/AAB
         env:
           NoDemo: ${{ github.event.inputs.full_version == 'true' }}
         run: >-
@@ -47,7 +50,7 @@ jobs:
           -o artifacts
           --no-restore
 
-      - name: Upload APK artifacts
+      - name: 上传 APK 产物
         uses: actions/upload-artifact@v6
         with:
           name: GalaxyBudsClient-android
