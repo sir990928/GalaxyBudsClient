@@ -133,16 +133,6 @@
 
     <!-- Project references -->
     <ItemGroup Condition="'$(IsWindows)'=='true'">
-        <ProjectReference Include="..\GalaxyBudsClient.Platform.WindowsRT\GalaxyBudsClient.Platform.WindowsRT.csproj" />
-        <ProjectReference Include="..\GalaxyBudsClient.Platform.Windows\GalaxyBudsClient.Platform.Windows.csproj" />
-    </ItemGroup>
-
-    <ItemGroup Condition="'$(IsLinux)'=='true'">
-        <ProjectReference Include="..\GalaxyBudsClient.Platform.Linux\GalaxyBudsClient.Platform.Linux.csproj" />
-    </ItemGroup>
-    
-    <ItemGroup Condition="'$(IsOSX)'=='true'">
-        <ProjectReference Include="..\GalaxyBudsClient.Platform.OSX\GalaxyBudsClient.Platform.OSX.csproj" />
     </ItemGroup>
     
     <ItemGroup>
